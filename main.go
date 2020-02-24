@@ -14,6 +14,8 @@ import (
     "io"
     "os"
     "github.com/PuerkitoBio/goquery"
+    _ "github.com/lib/pq"
+    "database/sql"
 )
 
 type ResultJson struct {
@@ -36,18 +38,8 @@ type ObjectServer struct{
 
 func ReceiveDomainName(ctx *fasthttp.RequestCtx){
     
-    /*
-        Información de SSL y servidores
-        https://api.ssllabs.com/api/v3/analyze?host=​<dominio>
-        Ejemplo:
-        https://api.ssllabs.com/api/v3/analyze?host=truora.com
-    */
-
     //extract data form the domainName key from POST
     domainGet := string(ctx.FormValue("domainName"))
-
-    
-
 
     resp, err := http.Get("https://api.ssllabs.com/api/v3/analyze?host=​"+domainGet)
     // fmt.Println(resp)
@@ -71,55 +63,35 @@ func ReceiveDomainName(ctx *fasthttp.RequestCtx){
         log.Fatal(err)
     }
 
-    /*
-    el resultado de leer el json se encuentra en el
-    struct Result que se pasas como result
-    */
-
-    // imprimo el resultado del fetch
     log.Printf("%+v",result)
 
-    //declaro e inicializo mi objectServers vacio
-
     arrayServer := []ObjectServer{}
-    // recorro la ip bajada del Endpoints
-
-    //numero de ips que hay 
 
     nambersOfIps := len(result.Endpoints)
-    fmt.Println("*******len(ip.IpAddress)*******")
-    fmt.Println("*******len(ip.IpAddress)*******")
-    fmt.Println("*******len(ip.IpAddress)*******")
-    fmt.Println("*******len(ip.IpAddress)*******")
-    fmt.Println("*******len(ip.IpAddress)*******")
     fmt.Println(nambersOfIps)
-    fmt.Println("--------------")
     for _, ip := range result.Endpoints {
         getWhoIs_ip, err := whois.Whois(ip.IpAddress)
         var organizationName string
         var country string
         if err == nil {
-            // imprimo las ips de los servidores
+            // print ips of servers
             log.Printf("%+v",result)
 
             arrayOfWhoIs := strings.Split(getWhoIs_ip, "\n")
             for index,data := range arrayOfWhoIs{
                 if strings.Contains(data, "OrgName")  {
-                        // data[16:] me muestra el nombre de la organización 
+                        // get organizationName
                         fmt.Println(index,"=>",data[16:])
                         organizationName = data[16:]
 
                 }
 
                 if strings.Contains(data, "Country")  {
-                        // data[16:] me muestra el pais del servidor 
+                        // get country
                         fmt.Println(index,"=>",data[16:])
                         country = data[16:]
                 }
             }
-            
-            // declaro e inicializo mi objecto ObjectServer
-            // con los valores adecuados 
 
             serverObject := ObjectServer{
                 address:ip.IpAddress, 
@@ -127,65 +99,51 @@ func ReceiveDomainName(ctx *fasthttp.RequestCtx){
                 country:country,
                 onwer:organizationName,
             }
-            // agrego un nuevo objecto de ObjectServer al array 
             arrayServer = append(arrayServer,serverObject)
-
         }
         
     }
-    fmt.Println("******** server server server server server ********")
+    fmt.Println("--server--")
     log.Printf("%+v",arrayServer)
-    fmt.Println("---------------------------------------------")
-    fmt.Println("---------------------------------------------")
-    fmt.Println("---------------------------------------------")
-    fmt.Println("---------------------------------------------")
-    fmt.Println("---------------------------------------------")
-    fmt.Println("---------------------------------------------")
-    // webScrapingTitle(domainGet)
+    webScrapingTitle(domainGet)
     // bodyOfRequest(domainGet)
     webScrapingLinks(domainGet)
 
-
+    fmt.Println("**************")
+    fmt.Println("**************")
+    fmt.Println("**************")
+    fmt.Println("**************")
+    fmt.Println("**************")
+    fmt.Println("**************")
+    // conectDb()
+    conectDb1()
 }
 
 func bodyOfRequest(domain string){
     // Make HTTP GET request
      url := "https://www."+domain
     response, err := http.Get(url)
-    // response, err := http.Get("https://www.devdungeon.com/")
     if err != nil {
         log.Fatal(err)
     }
     defer response.Body.Close()
-
     // Copy data from the response to standard output
     n, err := io.Copy(os.Stdout, response.Body)
     if err != nil {
         log.Fatal(err)
     }
-
     log.Println("Number of bytes copied to STDOUT:", n)
-
 }
 
 
 func webScrapingTitle(domain string){
-    fmt.Println("**********title***********")
-    fmt.Println("**********title***********")
-    fmt.Println("**********title***********")
-    fmt.Println("**********title***********")
-    fmt.Println("**********title***********")
-    // Make HTTP GET request
-    // response, err := http.Get("https://www.devdungeon.com/")
-        url := "https://www."+domain
+    url := "https://www."+domain
     response, err := http.Get(url)
-    // response, err := http.Get("https://www.truora.com/")
     if err != nil {
         log.Fatal(err)
     }
     defer response.Body.Close()
 
-    // Get the response body as a string
     dataInBytes, err := ioutil.ReadAll(response.Body)
     pageContent := string(dataInBytes)
 
@@ -195,10 +153,7 @@ func webScrapingTitle(domain string){
         fmt.Println("No title element found")
         // os.Exit(0)
     }
-    // The start index of the title is the index of the first
-    // character, the < symbol. We don't want to include
-    // <title> as part of the final value, so let's offset
-    // the index by the number of characers in <title>
+    // ignore <title>
     titleStartIndex += 7
 
     // Find the index of the closing tag
@@ -215,19 +170,12 @@ func webScrapingTitle(domain string){
 
     // Print out the result
     fmt.Printf("Page title: %s\n", pageTitle)
-
-
-  
-
 }
 
 
-
 func webScrapingLinks(domain string){
-     // Make HTTP request
      url := "https://www."+domain
     response, err := http.Get(url)
-    // response, err := http.Get("https://www.devdungeon.com")
     if err != nil {
         log.Fatal(err)
     }
@@ -238,14 +186,9 @@ func webScrapingLinks(domain string){
     if err != nil {
         log.Fatal("Error loading HTTP response body. ", err)
     }
-
     // Find all links and process them with the function
     // defined earlier
     document.Find("link").Each(processElement)
-
-
-  
-
 }
 
 func processElement(index int, element *goquery.Selection) {
@@ -260,14 +203,90 @@ func processElement(index int, element *goquery.Selection) {
     }
 }
 
+func conectDb(){
+    fmt.Println("----------")
+    fmt.Println("----------")
+    fmt.Println("----------")
+    fmt.Println("----------")
+    fmt.Println("----------")
+    fmt.Println("----------")
+    fmt.Println("----------")
+    fmt.Println("----------")
+    fmt.Println("----------")
+    fmt.Println("----------")
+    fmt.Println("----------")
+    fmt.Println("----------")
+    fmt.Println("----------")
+    fmt.Println("----------")
+    fmt.Println("----------")
+    fmt.Println("----------")
+    // db, err := sql.Open("postgres", "postgresql://abi@localhost:8081/userdatabase?sslmode=disable")
+    // fmt.Println("----------")
+    // if err != nil {
+    // log.Fatal("error connecting to the database: ", err)
+    // }else{
+    //     fmt.Println("CONNECT TO THE DATA BASE SUCCESSED")
+    // }
+    // fmt.Println("------dd----")
+
+    // defer db.Close()
+
+    // stmt, err := db.Prepare("UPDATE tblusers SET name = $1 WHERE id=$2")
+    // if err != nil {
+    // log.Fatal(err)
+    // }
+
+    // defer stmt.Close()
+
+    // res, err := stmt.Exec("marks", 1)
+    // if err != nil {
+    // log.Fatal(err)
+    // }
+
+    // affect, err := res.RowsAffected()
+    // if err != nil {
+    // log.Fatal(err)
+    // }
+
+    // fmt.Println(affect, "rows changed")
 
 
 
+}
+func conectDb1(){
+    // Connect to the "defaultdb" database.
+    db, err := sql.Open("postgres", "postgresql://root@localhost:26257/defaultdb?sslmode=disable")
+    if err != nil {
+        log.Fatal("error connecting to the database: ", err)
+    }
+    fmt.Println(db)
+
+    if _, err := db.Exec(
+        "INSERT INTO domain_list (domain) VALUES ('truora.com'),('facebook.com'),('stackoverflow.com'),('github.com')"); err != nil {
+        log.Fatal(err)
+    }
+    // Print out the balances.
+    // rows, err := db.Query("SELECT id, balance FROM accounts")
+    rows, err := db.Query("SELECT * FROM domain_list")
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer rows.Close()
+    fmt.Println("Initial balances:")
+    for rows.Next() {
+        var id int
+        var domain string
+        if err := rows.Scan(&id, &domain); err != nil {
+            log.Fatal(err)
+        }
+        fmt.Printf("%d %d\n", id, domain)
+    }
+
+}
 
 func main() {
     router := fasthttprouter.New()
     router.POST("/domain", ReceiveDomainName)
-
     log.Fatal(fasthttp.ListenAndServe(":8080", router.Handler))
 }
 
