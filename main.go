@@ -252,7 +252,11 @@ func processElement(index int, element *goquery.Selection) {
     // See if the href attribute exists on the element
     href, exists := element.Attr("href")
     if exists {
-        fmt.Println(href)
+        // fmt.Println(href)
+         if strings.Contains(href,".png"){
+            fmt.Println(index,"=>",href)
+
+        }
     }
 }
 
