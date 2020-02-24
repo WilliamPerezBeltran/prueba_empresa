@@ -11,6 +11,7 @@ import (
     // "os"
     "github.com/likexian/whois-go"
     "strings"
+    "./db"
 )
 
 type ResultJson struct {
