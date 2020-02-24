@@ -3,8 +3,10 @@ module proyect
 go 1.13
 
 require (
+	github.com/PuerkitoBio/goquery v1.5.1 // indirect
 	github.com/buaazp/fasthttprouter v0.1.1
 	github.com/d4l3k/go-pry v0.0.0-20181122210047-3e3af674fe57 // indirect
+	github.com/lib/pq v1.3.0 // indirect
 	github.com/likexian/whois-go v1.3.1
 	github.com/likexian/whois-parser-go v1.10.2 // indirect
 	github.com/mattn/go-tty v0.0.3 // indirect
