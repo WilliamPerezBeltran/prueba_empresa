@@ -37,6 +37,13 @@ type ObjectServer struct{
 }
 
 
+type CheckRowStruct struct{
+    check bool
+    check_id int
+    check_call int
+}
+
+
 func ReceiveDomainName(ctx *fasthttp.RequestCtx){
     
     //extract data form the domainName key from POST
@@ -119,14 +126,26 @@ func ReceiveDomainName(ctx *fasthttp.RequestCtx){
 
     fmt.Println(nambersOfIps)
 
-    check_if_change(nambersOfIps)
+    number_ips, id_selected, call_selected, check_selected:= check_if_change(nambersOfIps,0,0,false)
+
+    // if check_selected == false {
+    //     getServerNoChange()
+
+    // }else{
+    //     getServerChange(number_ips,id_selected)
+
+    // }
+
+    fmt.Println("datos seleccionados : ")
+    fmt.Println(number_ips)
+    fmt.Println(id_selected)
+    fmt.Println(call_selected)
+    fmt.Println(check_selected)
+    fmt.Println("-------------------")
 
 
-    // fmt.Println("--server--")
-    // log.Printf("%+v",arrayServer)
     webScrapingTitle(domainGet)
     webScrapingLinks(domainGet)
-    // conectDb1()
 }
 
 func webScrapingTitle(domain string){
@@ -194,38 +213,7 @@ func processElement(index int, element *goquery.Selection) {
     }
 }
 
-func conectDb1(){
-    db, err := sql.Open("postgres", "postgresql://root@localhost:26257/defaultdb?sslmode=disable")
-    if err != nil {
-        log.Fatal("error connecting to the database: ", err)
-    }
 
-    fmt.Println(db)
-
-    if _, err := db.Exec(
-        "INSERT INTO domain_list (domain) VALUES ('truora.com'),('facebook.com'),('stackoverflow.com'),('github.com')"); err != nil {
-        log.Fatal(err)
-    }
-
-    rows, err := db.Query("SELECT * FROM domain_list")
-
-    if err != nil {
-        log.Fatal(err)
-    }
-
-    defer rows.Close()
-
-    fmt.Println("Initial balances:")
-
-    for rows.Next() {
-        var id int
-        var domain string
-        if err := rows.Scan(&id, &domain); err != nil {
-            log.Fatal(err)
-        }
-        fmt.Printf("%d %s\n", id, domain)
-    }
-}
 
 func insertElementsToTableServer(address string, sslGrade string, country string, ownwer string, call int){
 
@@ -244,14 +232,13 @@ func insertElementsToTableServer(address string, sslGrade string, country string
     }
 }
 
-func check_if_change(ips int){
-
+func check_if_change(ips_send int, id_send int, call_send int,check_send bool )(int ,int ,int ,bool){
     db, err := sql.Open("postgres", "postgresql://root@localhost:26257/defaultdb?sslmode=disable")
     if err != nil {
         log.Fatal("error connecting to the database: ", err)
     }
 
-    rows, err := db.Query("SELECT * FROM server LIMIT $1",ips)
+    rows, err := db.Query("SELECT * FROM server LIMIT $1",ips_send)
 
     if err != nil {
         log.Fatal(err)
@@ -261,15 +248,66 @@ func check_if_change(ips int){
 
     fmt.Println("Initial balances:")
     
+    var id, call int
+    var address,ssl_grade,country,owner string
+    check:=false
     for rows.Next() {
-        var id, call int
-        var address,ssl_grade,country,owner string
+
         if err := rows.Scan(&id, &address, &ssl_grade, &country, &owner, &call); err != nil {
             log.Fatal(err)
         }
         fmt.Printf("%d %s %s %s %s %d\n", id, address,ssl_grade,country,owner,call)
+
+        // get_id, get_address ,get_ssl_grade ,get_country ,get_owner, get_call, get_check := checkRow(id, address ,ssl_grade ,country ,owner, call, check)
+        get_id, _ ,_ ,_ ,_, get_call, get_check := checkRow(id, address ,ssl_grade ,country ,owner, call, check_send)
+
+        if get_check == true {
+            return ips_send, get_id, get_call,get_check
+
+        }
     }
-    // for i := 0; i<= (len(ips)-1);i++{}
+    return ips_send, id, call, check
+}
+
+func checkRow(id int, address string, ssl_grade string, country string, owner string, call int, check bool)(int, string, string, string, string, int, bool ){
+    db, err := sql.Open("postgres", "postgresql://root@localhost:26257/defaultdb?sslmode=disable")
+    if err != nil {
+        log.Fatal("error connecting to the database: ", err)
+    }
+
+    rows, err := db.Query("SELECT * FROM server where id != $1 AND call = $2",id,call)
+
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    defer rows.Close()
+
+    origin_id := id
+    origin_address := address
+    origin_ssl_grade := ssl_grade
+    origin_country := country
+    origin_owner := owner
+
+
+    for rows.Next() {
+        var id, call int
+        var address,ssl_grade,country,owner string
+
+        if err := rows.Scan(&id, &address, &ssl_grade, &country, &owner, &call); err != nil {
+            log.Fatal(err)
+        }
+            
+        if origin_address != address || origin_ssl_grade != ssl_grade || origin_owner != owner || origin_country != country {
+            return id, address,ssl_grade ,country ,owner, call, true
+            break
+        }
+
+        
+    }
+return 0,"-","-","-","-",0,false
+// return 0,"-","-","-","-",0,false
+
 }
 
 func ListAllDomains(ctx *fasthttp.RequestCtx){
