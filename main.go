@@ -16,6 +16,7 @@ import (
     "github.com/PuerkitoBio/goquery"
     _ "github.com/lib/pq"
     "database/sql"
+    "time"
 )
 
 type ResultJson struct {
@@ -41,71 +42,87 @@ func ReceiveDomainName(ctx *fasthttp.RequestCtx){
     //extract data form the domainName key from POST
     domainGet := string(ctx.FormValue("domainName"))
 
-    resp, err := http.Get("https://api.ssllabs.com/api/v3/analyze?host=​"+domainGet)
-    // fmt.Println(resp)
+    counter_call := 1
 
-    if err != nil {
-        log.Fatal(err)
-
-    }
-    defer resp.Body.Close()
-
-    body, err := ioutil.ReadAll(resp.Body)
-
-    if err != nil{
-        log.Fatal(err)
-    }
-
-    var result ResultJson
-    err = json.Unmarshal(body, &result)
-
-    if err != nil {
-        log.Fatal(err)
-    }
-
-    log.Printf("%+v",result)
-
-    arrayServer := []ObjectServer{}
-
-    nambersOfIps := len(result.Endpoints)
-    fmt.Println(nambersOfIps)
-    for _, ip := range result.Endpoints {
-        getWhoIs_ip, err := whois.Whois(ip.IpAddress)
-        var organizationName string
-        var country string
-        if err == nil {
-            // print ips of servers
-            log.Printf("%+v",result)
-
-            arrayOfWhoIs := strings.Split(getWhoIs_ip, "\n")
-            for index,data := range arrayOfWhoIs{
-                if strings.Contains(data, "OrgName")  {
-                        // get organizationName
-                        fmt.Println(index,"=>",data[16:])
-                        organizationName = data[16:]
-
-                }
-
-                if strings.Contains(data, "Country")  {
-                        // get country
-                        fmt.Println(index,"=>",data[16:])
-                        country = data[16:]
-                }
-            }
-
-            serverObject := ObjectServer{
-                address:ip.IpAddress, 
-                grade:ip.Grade,
-                country:country,
-                onwer:organizationName,
-            }
-            arrayServer = append(arrayServer,serverObject)
-            insertElementsToTableServer(serverObject.address,serverObject.grade,serverObject.country,serverObject.onwer,1)
-        }
+    for counter_call <= 10 {
+        time.Sleep(1000 * time.Millisecond)
         
+        resp, err := http.Get("https://api.ssllabs.com/api/v3/analyze?host=​"+domainGet)
+        // fmt.Println(resp)
+
+        if err != nil {
+            log.Fatal(err)
+
+        }
+        defer resp.Body.Close()
+
+        body, err := ioutil.ReadAll(resp.Body)
+
+        if err != nil{
+            log.Fatal(err)
+        }
+
+        var result ResultJson
+        err = json.Unmarshal(body, &result)
+
+        if err != nil {
+            log.Fatal(err)
+        }
+
+        arrayServer := []ObjectServer{}
+
+        if len(result.Endpoints) == 0{
+            continue
+        }
+
+        nambersOfIps = len(result.Endpoints)
+        fmt.Println(nambersOfIps)
+        for _index, ip := range result.Endpoints {
+            getWhoIs_ip, err := whois.Whois(ip.IpAddress)
+            var organizationName string
+            var country string
+            if err == nil {
+                // print ips of servers
+                log.Printf("%+v",result)
+
+                arrayOfWhoIs := strings.Split(getWhoIs_ip, "\n")
+                for index,data := range arrayOfWhoIs{
+                    if strings.Contains(data, "OrgName")  {
+                            // get organizationName
+                            fmt.Println(index,"=>",data[16:])
+                            organizationName = data[16:]
+
+                    }
+
+                    if strings.Contains(data, "Country")  {
+                            // get country
+                            fmt.Println(index,"=>",data[16:])
+                            country = data[16:]
+                    }
+                }
+
+                serverObject := ObjectServer{
+                    address:ip.IpAddress, 
+                    grade:ip.Grade,
+                    country:country,
+                    onwer:organizationName,
+                }
+                arrayServer = append(arrayServer,serverObject)
+                insertElementsToTableServer(serverObject.address,serverObject.grade,serverObject.country,serverObject.onwer,_index)
+            }
+            
+        }
+
+        counter_call = counter_call + 1
     }
-    fmt.Println("--server--")
-    log.Printf("%+v",arrayServer)
+
+    fmt.Println(nambersOfIps)
+
+    check_if_change(nambersOfIps)
+
+
+    // fmt.Println("--server--")
+    // log.Printf("%+v",arrayServer)
     webScrapingTitle(domainGet)
     webScrapingLinks(domainGet)
     // conectDb1()
@@ -216,9 +233,11 @@ func conectDb1(){
 }
 
 func insertElementsToTableServer(address string, sslGrade string, country string, ownwer string, call int){
-    fmt.Println("----insertElementsToTableServer----")
-    fmt.Println(address)
-    fmt.Printf("%s\n", address)
+
+    if sslGrade == ""{
+        sslGrade = "--"
+    }
+
     db, err := sql.Open("postgres", "postgresql://root@localhost:26257/defaultdb?sslmode=disable")
     if err != nil {
         log.Fatal("error connecting to the database: ", err)
@@ -228,12 +247,71 @@ func insertElementsToTableServer(address string, sslGrade string, country string
     err != nil {
         log.Fatal(err)
     }
+}
 
+func check_if_change(ips int){
+
+    db, err := sql.Open("postgres", "postgresql://root@localhost:26257/defaultdb?sslmode=disable")
+    if err != nil {
+        log.Fatal("error connecting to the database: ", err)
+    }
+
+    // if _, err := db.Exec("SELECT * FROM server LIMIT $1",ips)
+    // err != nil {
+    //     log.Fatal(err)
+    // }
+
+    rows, err := db.Query("SELECT * FROM server LIMIT $1",ips)
+
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    defer rows.Close()
+
+    fmt.Println("Initial balances:")
+    fmt.Println("Initial balances:")
+    fmt.Println("Initial balances:")
+    fmt.Println("Initial balances:")
+    fmt.Println("Initial balances:")
+    fmt.Println("Initial balances:")
+    fmt.Println("Initial balances:")
+    
+    for rows.Next() {
+        var id, call int
+        var address,ssl_grade,country,owner string
+        if err := rows.Scan(&id, &address, &ssl_grade, &country, &owner, &call); err != nil {
+            log.Fatal(err)
+        }
+        fmt.Printf("%d %s %s %s %s %d\n", id, address,ssl_grade,country,owner,call)
+    }
+
+
+    // SELECT (id,address,ssl_grade,country,owner,call) FROM server where call = 0;
+    // SELECT * FROM server LIMIT 1;
+
+    // db, err := sql.Open("postgres", "postgresql://root@localhost:26257/defaultdb?sslmode=disable")
+    // if err != nil {
+    //     log.Fatal("error connecting to the database: ", err)
+    // }
+
+    // if _, err := db.Exec("SELECT (address,ssl_grade,country,owner) FROM server where call = 0",address,sslGrade,country,ownwer,call)
+    // err != nil {
+    //     log.Fatal(err)
+    // }
+
+    // for i := 0; i<= (len(ips)-1);i++{
+
+    // }
+
+    // if _, err := db.Exec("INSERT INTO server (address,ssl_grade,country,owner,call) VALUES($1, $2, $3, $4, $5)",address,sslGrade,country,ownwer,call)
     
 
-    
 
 }
+
+
+var nambersOfIps int 
 
 func main() {
     router := fasthttprouter.New()
