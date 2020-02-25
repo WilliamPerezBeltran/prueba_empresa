@@ -270,12 +270,6 @@ func check_if_change(ips int){
     defer rows.Close()
 
     fmt.Println("Initial balances:")
-    fmt.Println("Initial balances:")
-    fmt.Println("Initial balances:")
-    fmt.Println("Initial balances:")
-    fmt.Println("Initial balances:")
-    fmt.Println("Initial balances:")
-    fmt.Println("Initial balances:")
     
     for rows.Next() {
         var id, call int
