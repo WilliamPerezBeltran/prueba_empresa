@@ -11,7 +11,7 @@ import (
     // "os"
     "github.com/likexian/whois-go"
     "strings"
-    "io"
+    // "io"
     "os"
     "github.com/PuerkitoBio/goquery"
     _ "github.com/lib/pq"
@@ -100,40 +100,18 @@ func ReceiveDomainName(ctx *fasthttp.RequestCtx){
                 onwer:organizationName,
             }
             arrayServer = append(arrayServer,serverObject)
+            insertElementsToTableServer(serverObject.address,serverObject.grade,serverObject.country,serverObject.onwer,1)
         }
         
     }
     fmt.Println("--server--")
     log.Printf("%+v",arrayServer)
     webScrapingTitle(domainGet)
-    // bodyOfRequest(domainGet)
     webScrapingLinks(domainGet)
-
-    fmt.Println("**************")
-    fmt.Println("**************")
-    fmt.Println("**************")
-    fmt.Println("**************")
-    fmt.Println("**************")
-    fmt.Println("**************")
-    // conectDb()
-    conectDb1()
+    // conectDb1()
 }
 
-func bodyOfRequest(domain string){
-    // Make HTTP GET request
-     url := "https://www."+domain
-    response, err := http.Get(url)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer response.Body.Close()
-    // Copy data from the response to standard output
-    n, err := io.Copy(os.Stdout, response.Body)
-    if err != nil {
-        log.Fatal(err)
-    }
-    log.Println("Number of bytes copied to STDOUT:", n)
-}
+
 
 
 func webScrapingTitle(domain string){
@@ -203,84 +181,57 @@ func processElement(index int, element *goquery.Selection) {
     }
 }
 
-func conectDb(){
-    fmt.Println("----------")
-    fmt.Println("----------")
-    fmt.Println("----------")
-    fmt.Println("----------")
-    fmt.Println("----------")
-    fmt.Println("----------")
-    fmt.Println("----------")
-    fmt.Println("----------")
-    fmt.Println("----------")
-    fmt.Println("----------")
-    fmt.Println("----------")
-    fmt.Println("----------")
-    fmt.Println("----------")
-    fmt.Println("----------")
-    fmt.Println("----------")
-    fmt.Println("----------")
-    // db, err := sql.Open("postgres", "postgresql://abi@localhost:8081/userdatabase?sslmode=disable")
-    // fmt.Println("----------")
-    // if err != nil {
-    // log.Fatal("error connecting to the database: ", err)
-    // }else{
-    //     fmt.Println("CONNECT TO THE DATA BASE SUCCESSED")
-    // }
-    // fmt.Println("------dd----")
 
-    // defer db.Close()
-
-    // stmt, err := db.Prepare("UPDATE tblusers SET name = $1 WHERE id=$2")
-    // if err != nil {
-    // log.Fatal(err)
-    // }
-
-    // defer stmt.Close()
-
-    // res, err := stmt.Exec("marks", 1)
-    // if err != nil {
-    // log.Fatal(err)
-    // }
-
-    // affect, err := res.RowsAffected()
-    // if err != nil {
-    // log.Fatal(err)
-    // }
-
-    // fmt.Println(affect, "rows changed")
-
-
-
-}
 func conectDb1(){
-    // Connect to the "defaultdb" database.
     db, err := sql.Open("postgres", "postgresql://root@localhost:26257/defaultdb?sslmode=disable")
     if err != nil {
         log.Fatal("error connecting to the database: ", err)
     }
+
     fmt.Println(db)
 
     if _, err := db.Exec(
         "INSERT INTO domain_list (domain) VALUES ('truora.com'),('facebook.com'),('stackoverflow.com'),('github.com')"); err != nil {
         log.Fatal(err)
     }
-    // Print out the balances.
-    // rows, err := db.Query("SELECT id, balance FROM accounts")
+
     rows, err := db.Query("SELECT * FROM domain_list")
+
     if err != nil {
         log.Fatal(err)
     }
+
     defer rows.Close()
+
     fmt.Println("Initial balances:")
+
     for rows.Next() {
         var id int
         var domain string
         if err := rows.Scan(&id, &domain); err != nil {
             log.Fatal(err)
         }
-        fmt.Printf("%d %d\n", id, domain)
+        fmt.Printf("%d %s\n", id, domain)
     }
+}
+
+func insertElementsToTableServer(address string, sslGrade string, country string, ownwer string, call int){
+    fmt.Println("----insertElementsToTableServer----")
+    fmt.Println(address)
+    fmt.Printf("%s\n", address)
+    db, err := sql.Open("postgres", "postgresql://root@localhost:26257/defaultdb?sslmode=disable")
+    if err != nil {
+        log.Fatal("error connecting to the database: ", err)
+    }
+
+    if _, err := db.Exec("INSERT INTO server (address,ssl_grade,country,owner,call) VALUES($1, $2, $3, $4, $5)",address,sslGrade,country,ownwer,call)
+    err != nil {
+        log.Fatal(err)
+    }
+
+    
+
+    
 
 }
 
