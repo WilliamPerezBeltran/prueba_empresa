@@ -305,20 +305,15 @@ func checkRow(id int, address string, ssl_grade string, country string, owner st
         
     }
 return 0,"-","-","-","-",0,false
-// return 0,"-","-","-","-",0,false
-
 }
 
-
-
-
-
-type Domain struct{
-    name string 
-    
+type Items struct{
+    Items []Item
 }
 
-
+type Item struct{
+    Name string `json:"domain"`
+}
 
 func ListAllDomains(ctx *fasthttp.RequestCtx){
     db, err := sql.Open("postgres", "postgresql://root@localhost:26257/defaultdb?sslmode=disable")
@@ -334,74 +329,19 @@ func ListAllDomains(ctx *fasthttp.RequestCtx){
 
     defer rows.Close()
 
-    fmt.Println("Initial balances:")
-
-
-    arraysOfDomains := []Domain{}
+    items := Items{}
     
     for rows.Next() {
-        var id int
         var domain string
-        if err := rows.Scan(&id, &domain); err != nil {
+        if err := rows.Scan(&domain); err != nil {
             log.Fatal(err)
         }
 
-        itemDomain := Domain{name: domain}
+        item := Item{Name: domain}
 
-        arraysOfDomains = append(arraysOfDomains,itemDomain)
-        fmt.Printf("%d %s\n", id, domain)
+        items.Items = append(items.Items,item)
     }
-        fmt.Printf("%v", arraysOfDomains)
-
-    
-
-
-
-    // var domains[]*Domain
-
-    // for rows.Next(){
-    //     c := new(Domain)
-    //     var id int
-    //     var domain string
-    //     err := rows.Scan(&id, &domain)
-    //     if err != nil {
-    //         fmt.Println(err)
-    //         return
-    //     }
-    //     domains := append(domains,c)
-    //     // fmt.Printf("%d %s\n",domains)
-    // }
-
-    // if err := rows.Err(); err != nil {
-    //     fmt.Println(err)
-    //     return
-    // }
-
-    // if err := json.NewEncoder(ctx).Encode(domains); err != nil {
-    //     fmt.Println(err)
-    // }
-    // return
-
-
-
-    // fmt.Println("Initial balances:")
-    
-    // for rows.Next() {
-    //     var id int
-    //     var domain string
-    //     if err := rows.Scan(&id, &domain); err != nil {
-    //         log.Fatal(err)
-    //     }
-    //     fmt.Printf("%d %s\n", id, domain)
-    // }
-
-
-    // ctx.SetContentType("application/json; charset=utf-8") 
-
-
-
-
-
+    json.NewEncoder(ctx).Encode(&items)
 }
 
 func InsertDomains(domain string){
