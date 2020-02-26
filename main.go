@@ -309,9 +309,16 @@ return 0,"-","-","-","-",0,false
 
 }
 
+
+
+
+
 type Domain struct{
-    domain string 
+    name string 
+    
 }
+
+
 
 func ListAllDomains(ctx *fasthttp.RequestCtx){
     db, err := sql.Open("postgres", "postgresql://root@localhost:26257/defaultdb?sslmode=disable")
@@ -319,7 +326,7 @@ func ListAllDomains(ctx *fasthttp.RequestCtx){
         log.Fatal("error connecting to the database: ", err)
     }
 
-    rows, err := db.Query("SELECT * FROM domain_list")
+    rows, err := db.Query("SELECT DISTINCT domain FROM domain_list;")
 
     if err != nil {
         log.Fatal(err)
@@ -328,6 +335,9 @@ func ListAllDomains(ctx *fasthttp.RequestCtx){
     defer rows.Close()
 
     fmt.Println("Initial balances:")
+
+
+    arraysOfDomains := []Domain{}
     
     for rows.Next() {
         var id int
@@ -335,8 +345,13 @@ func ListAllDomains(ctx *fasthttp.RequestCtx){
         if err := rows.Scan(&id, &domain); err != nil {
             log.Fatal(err)
         }
+
+        itemDomain := Domain{name: domain}
+
+        arraysOfDomains = append(arraysOfDomains,itemDomain)
         fmt.Printf("%d %s\n", id, domain)
     }
+        fmt.Printf("%v", arraysOfDomains)
 
     
 
