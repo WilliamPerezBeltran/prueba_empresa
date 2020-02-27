@@ -128,13 +128,6 @@ func ReceiveDomainName(ctx *fasthttp.RequestCtx){
 
     number_ips, id_selected, call_selected, check_selected:= check_if_change(nambersOfIps,0,0,false)
 
-    // if check_selected == false {
-    //     getServerNoChange()
-
-    // }else{
-    //     getServerChange(number_ips,id_selected)
-
-    // }
 
     fmt.Println("datos seleccionados : ")
     fmt.Println(number_ips)
@@ -144,15 +137,109 @@ func ReceiveDomainName(ctx *fasthttp.RequestCtx){
     fmt.Println("-------------------")
 
 
-    webScrapingTitle(domainGet)
+    get_title := string(webScrapingTitle(domainGet))
     webScrapingLinks(domainGet)
+
+
+    fmt.Println("el TITLE que queria ")
+    fmt.Println(get_title)
+    fmt.Println(get_title)
+    fmt.Println(get_title)
+    fmt.Println("-------------------")
+    
+
+
+    fmt.Println("el LA IMAGE URL que queria ")
+    fmt.Println(imgUrl)
+    fmt.Println(imgUrl)
+    fmt.Println(imgUrl)
+    fmt.Println("-------------------")
+
+
+
+    // if check_selected == false {
+    //     getServerNoChange(check_selected,logo,title)
+
+    // }else{
+    //     getServerChange(number_ips,id_selected)
+
+    // }
 }
 
-func webScrapingTitle(domain string){
+
+
+// func getServerNoChange(domain string){
+
+//      db, err := sql.Open("postgres", "postgresql://root@localhost:26257/defaultdb?sslmode=disable")
+//     if err != nil {
+//         log.Fatal("error connecting to the database: ", err)
+//     }
+
+//     rows, err := db.Query("SELECT * FROM server LIMIT $1",ips_send)
+
+//     if err != nil {
+//         log.Fatal(err)
+//     }
+
+//     defer rows.Close()
+
+//     fmt.Println("Initial balances:")
+    
+//     var id, call int
+//     var address,ssl_grade,country,owner string
+//     check:=false
+//     for rows.Next() {
+
+//         if err := rows.Scan(&id, &address, &ssl_grade, &country, &owner, &call); err != nil {
+//             log.Fatal(err)
+//         }
+//         fmt.Printf("%d %s %s %s %s %d\n", id, address,ssl_grade,country,owner,call)
+
+//         // get_id, get_address ,get_ssl_grade ,get_country ,get_owner, get_call, get_check := checkRow(id, address ,ssl_grade ,country ,owner, call, check)
+//         get_id, _ ,_ ,_ ,_, get_call, get_check := checkRow(id, address ,ssl_grade ,country ,owner, call, check_send)
+
+//         if get_check == true {
+//             return ips_send, get_id, get_call,get_check
+
+//         }
+//     }
+//     return ips_send, id, call, check
+
+// }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+func webScrapingTitle(domain string)[]byte{
+    var pageTitle []byte
     url := "https://www."+domain
     response, err := http.Get(url)
     if err != nil {
-        log.Fatal(err)
+        // Entra aca cuando el certificado de la pagina no es permitido 
+        var str = []string{"No Data: Certificate not permitted"}
+        var x = []byte{}
+        for i:=0; i<len(str); i++{
+            b := []byte(str[i])
+            for j:=0; j<len(b); j++{
+                x = append(x,b[j])
+            }
+        }
+        return x
+        // log.Fatal(err)
     }
     defer response.Body.Close()
 
@@ -177,28 +264,32 @@ func webScrapingTitle(domain string){
     // (Optional)
     // Copy the substring in to a separate variable so the
     // variables with the full document data can be garbage collected
-    pageTitle := []byte(pageContent[titleStartIndex:titleEndIndex])
+    pageTitle = []byte(pageContent[titleStartIndex:titleEndIndex])
 
     // Print out the result
     fmt.Printf("Page title: %s\n", pageTitle)
+
+    return pageTitle
 }
 
 func webScrapingLinks(domain string){
      url := "https://www."+domain
     response, err := http.Get(url)
     if err != nil {
-        log.Fatal(err)
-    }
-    defer response.Body.Close()
+        imgUrl = "No Data: Certificate not permitted"
+        // log.Fatal(err)
+    }else{
+        defer response.Body.Close()
 
-    // Create a goquery document from the HTTP response
-    document, err := goquery.NewDocumentFromReader(response.Body)
-    if err != nil {
-        log.Fatal("Error loading HTTP response body. ", err)
+        // Create a goquery document from the HTTP response
+        document, err := goquery.NewDocumentFromReader(response.Body)
+        if err != nil {
+            log.Fatal("Error loading HTTP response body. ", err)
+        }
+        // Find all links and process them with the function
+        // defined earlier
+        document.Find("link").Each(processElement)
     }
-    // Find all links and process them with the function
-    // defined earlier
-    document.Find("link").Each(processElement)
 }
 
 func processElement(index int, element *goquery.Selection) {
@@ -211,9 +302,8 @@ func processElement(index int, element *goquery.Selection) {
 
         }
     }
+    imgUrl = href
 }
-
-
 
 func insertElementsToTableServer(address string, sslGrade string, country string, ownwer string, call int){
 
@@ -358,6 +448,7 @@ func InsertDomains(domain string){
 
 var (
  nambersOfIps int   
+ imgUrl string   
 ) 
 // var nambersOfIps int 
 
