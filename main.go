@@ -128,101 +128,84 @@ func ReceiveDomainName(ctx *fasthttp.RequestCtx){
 
     number_ips, id_selected, call_selected, check_selected:= check_if_change(nambersOfIps,0,0,false)
 
-
-    fmt.Println("datos seleccionados : ")
-    fmt.Println(number_ips)
     fmt.Println(id_selected)
     fmt.Println(call_selected)
-    fmt.Println(check_selected)
-    fmt.Println("-------------------")
-
-
     get_title := string(webScrapingTitle(domainGet))
     webScrapingLinks(domainGet)
 
+    if check_selected == false {
+        fmt.Println(" ENTRO A check_selected FALSE OSEA getServerNoChange")
+        getServerNoChange(ctx,check_selected,get_title,imgUrl,number_ips)
 
-    fmt.Println("el TITLE que queria ")
-    fmt.Println(get_title)
-    fmt.Println(get_title)
-    fmt.Println(get_title)
-    fmt.Println("-------------------")
-    
+    }else{
+        fmt.Println("********++ ")
+        // getServerChange(number_ips,id_selected)
 
-
-    fmt.Println("el LA IMAGE URL que queria ")
-    fmt.Println(imgUrl)
-    fmt.Println(imgUrl)
-    fmt.Println(imgUrl)
-    fmt.Println("-------------------")
-
-
-
-    // if check_selected == false {
-    //     getServerNoChange(check_selected,logo,title)
-
-    // }else{
-    //     getServerChange(number_ips,id_selected)
-
-    // }
+    }
 }
 
+type Answer struct{
+    Servers []Server
+    Server_changed bool `json:"server_changed"`
+    Ssl_grade string `json:"ssl_grade"`
+    Previous_ssl_grade string `json:"previous_ssl_grade"`
+    Logo string `json:"logo"`
+    Title string `json:"title"`
+    Is_down bool `json:"is_down"`
+}
 
+type Server struct{
+    Address string `json:"Address"`
+    Ssl_grade string `json:"ssl_grade"`
+    Country string `json:"country"`
+    Owner string `json:"Owner"`
+}
 
-// func getServerNoChange(domain string){
+func getServerNoChange(ctx *fasthttp.RequestCtx, check_selected bool, get_title string, imgUrl string, number_ips int){
+    db, err := sql.Open("postgres", "postgresql://root@localhost:26257/defaultdb?sslmode=disable")
+    if err != nil {
+        log.Fatal("error connecting to the database: ", err)
+    }
 
-//      db, err := sql.Open("postgres", "postgresql://root@localhost:26257/defaultdb?sslmode=disable")
-//     if err != nil {
-//         log.Fatal("error connecting to the database: ", err)
-//     }
-
-//     rows, err := db.Query("SELECT * FROM server LIMIT $1",ips_send)
-
-//     if err != nil {
-//         log.Fatal(err)
-//     }
-
-//     defer rows.Close()
-
-//     fmt.Println("Initial balances:")
+    rows, err := db.Query("SELECT address, ssl_grade, country, owner FROM server LIMIT $1",number_ips)
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer rows.Close()
     
-//     var id, call int
-//     var address,ssl_grade,country,owner string
-//     check:=false
-//     for rows.Next() {
+    fmt.Println("*****getServerNoChangegetServerNoChange***++ ")
 
-//         if err := rows.Scan(&id, &address, &ssl_grade, &country, &owner, &call); err != nil {
-//             log.Fatal(err)
-//         }
-//         fmt.Printf("%d %s %s %s %s %d\n", id, address,ssl_grade,country,owner,call)
+    answer := Answer{}
 
-//         // get_id, get_address ,get_ssl_grade ,get_country ,get_owner, get_call, get_check := checkRow(id, address ,ssl_grade ,country ,owner, call, check)
-//         get_id, _ ,_ ,_ ,_, get_call, get_check := checkRow(id, address ,ssl_grade ,country ,owner, call, check_send)
+    counter := 0
 
-//         if get_check == true {
-//             return ips_send, get_id, get_call,get_check
+    for rows.Next() {
+        var  address, ssl_grade, country, owner string
+        if err := rows.Scan(&address, &ssl_grade, &country, &owner); err != nil {
+            log.Fatal(err)
+        }
+        item_server := Server{Address:address, Ssl_grade:ssl_grade, Country:country ,Owner:owner}
+        answer.Servers = append(answer.Servers,item_server)
+        if counter == 0{
+            answer.Ssl_grade = ssl_grade
 
-//         }
-//     }
-//     return ips_send, id, call, check
+        }else if counter == 1{
+            answer.Previous_ssl_grade = ssl_grade
 
-// }
+        }
+        counter ++
+    }
 
+    answer.Server_changed = check_selected
+    answer.Logo = imgUrl
+    answer.Title = get_title
+    answer.Is_down = false
+    deleteAllDataFromServer()
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    enc := json.NewEncoder(ctx)
+    enc.SetIndent("", "  ")
+    enc.Encode(&answer)
+}
 
 func webScrapingTitle(domain string)[]byte{
     var pageTitle []byte
@@ -445,6 +428,19 @@ func InsertDomains(domain string){
         log.Fatal(err)
     }
 }
+
+func deleteAllDataFromServer(){
+    db, err := sql.Open("postgres", "postgresql://root@localhost:26257/defaultdb?sslmode=disable")
+    if err != nil {
+        log.Fatal("error connecting to the database: ", err)
+    }
+
+    if _, err := db.Exec("DELETE FROM server")
+    err != nil {
+        log.Fatal(err)
+    }
+}
+
 
 var (
  nambersOfIps int   
